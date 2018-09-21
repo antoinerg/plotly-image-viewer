@@ -2,7 +2,7 @@
     <div class="compare-wrapper">
       <div class="compare">
 
-        <div class="compare__content" :style="{'opacity': value/100.0}">
+        <div class="compare__content" :style="{'width': width}">
           <slot name="first"></slot>
         </div>
 
@@ -15,7 +15,7 @@
         </div>
 
         <div class="compare-overlay " :style="{width:`calc(${compareWidth + '%'})`}">
-          <div class="compare-overlay__content" :style="{ 'opacity': 1-value/100.0}">
+          <div class="compare-overlay__content" :style="{ 'width': width}">
             <slot name="second"></slot>
           </div>
         </div>
@@ -25,8 +25,6 @@
 </template>
 
 <script>
-import { ResizeObserver } from 'vue-resize'
-
 export default {
   props:{
     value: { default: 50 },
@@ -52,18 +50,19 @@ export default {
   },
   methods:{
     handleInput(e){
-      this.value = e.target.value
+      this.compareWidth = e.target.value
       this.$emit('input', e.target.value)
     },
     handleResize(){
-
+      const w = this.getContainerWidth();
+      if(w === this.width)
+        return;
+      this.width = w
+      // console.log(this.width)
     },
     getContainerWidth(){
       return window.getComputedStyle(this.$el,null).getPropertyValue('width')
     },
-  },
-  components: {
-    ResizeObserver
   }
 }
 </script>
@@ -97,6 +96,7 @@ export default {
   position: absolute;
   overflow:hidden;
   height: 100%;
+  widht: 100%;
   top:0;
 }
 .compare-overlay__content{
