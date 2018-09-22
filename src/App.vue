@@ -15,9 +15,9 @@
       </div>
 
 
-    <h2 v-if="mockPayload">{{mock}}</h2>
+    <h2 v-if="mock">{{mock}}</h2>
 
-    <div v-if="mockPayload || mock === null">
+    <div v-if="true">
         <h3>Comparison slider</h3>
         <comparify value="50">
           <img slot="first" :src="baseline">
@@ -90,12 +90,13 @@ export default {
         this.mock = name;
         this.fetchMock();
     },
-    async fetchMock() {
+    fetchMock: function() {
+        console.log(`Fetching ${this.json_url}`)
         axios
             .get(this.json_url)
             .then(response => (this.mockPayload = response.data))
             .then(mockData => Plotly.newPlot('graph', mockData))
-            .catch(error => (this.mockPayload = null))
+            .catch(error => (this.mockPayload = null, console.log(error)))
     },
     async fetchAllMocks() {
         var handler = new htmlparser.DefaultHandler(function (error, dom) {
