@@ -2,43 +2,51 @@
   <div class="container">
       <header>
         <a href="https://plot.ly"><img class="plotly-logo" src="https://tamarack-prismic.imgix.net/plotly/eb464d43-4ab4-427e-b617-482b62ba6c69_plotly-logo-white.png?w=100&auto=format"/></a>
-        <select>
-            <option v-for="version in versions" :key="version" :value="version">{{version}}</option>
-        </select>
       </header>
 
       <div class="controls">
-        <autocomplete @submit="fetchMock(this.value)" :min-len="2" :wait="10" @item-selected="fetchMock" @update-items="updateResults" :component-item='AutocompleteItem' :items="results" :input-attrs="{placeholder: 'search mocks'}"></autocomplete>
+        <autocomplete @submit="fetchMock(this.value)" :min-len="0" :wait="10" @item-selected="fetchMock" @update-items="updateResults" :component-item='AutocompleteItem' :items="results" :input-attrs="{placeholder: 'search mocks'}"></autocomplete>
+        <select>
+            <option v-for="version in versions" :key="version" :value="version">{{version}}</option>
+        </select>
       </div>
 
-
-    <h2 v-if="mock">{{mock}}</h2>
-
-    <div v-if="true">
-        <h3>Comparison slider</h3>
-        <comparify value="50">
-          <img slot="first" :src="baseline"/>
-          <img slot="second" :src="image"/>
-        </comparify>
-    </div>
-
-    <div v-if="false">
-        <h3>Opacity slider</h3>
-        <opacity value="50">
-          <img slot="first" :src="baseline">
-          <img slot="second" :src="image">
-        </opacity>
-    </div>
-
-    <div v-if="mockPayload">
-        <h3>Live</h3>
-        <div ref="graph" id="graph"/>
-    </div>
-
-    <div v-if="false">
-        <h3>mock data (<a :href="json_url">JSON</a>)</h3>
+    <div class="error" v-if="errorMsg"><h3>{{errorMsg}}</h3></div>
+    <div class="preview">
         <div>
-            <json-tree :data="mockPayload" :level="2"></json-tree>
+            <h3>Comparison slider</h3>
+            <comparify value="50">
+              <img ref="baseline" slot="first" :src="baseline"/>
+              <img ref="image" slot="second" :src="image"/>
+            </comparify>
+        </div>
+
+        <div v-if="mock">
+            <h3>Diff ({{numDiffPixels}} different pixels)</h3>
+            <canvas ref="diff" />
+        </div>
+
+        <div v-if="false">
+            <h3>Opacity slider</h3>
+            <opacity value="50">
+              <img slot="first" :src="baseline">
+              <img slot="second" :src="image">
+            </opacity>
+        </div>
+
+        <div v-if="mockPayload">
+            <h3>Live</h3>
+                <comparify value="50">
+                  <img slot="first" :src="baseline"/>
+                  <div slot="second" id="graph" ref="graph"/>
+                </comparify>
+        </div>
+
+        <div v-if="false">
+            <h3>mock data (<a :href="json_url">JSON</a>)</h3>
+            <div>
+                <json-tree :data="mockPayload" :level="2"></json-tree>
+            </div>
         </div>
     </div>
 
@@ -59,16 +67,19 @@ import AutocompleteItem from './components/AutocompleteItem.vue'
 import Fuse from 'fuse.js'
 
 const axios = require('axios');
-const htmlparser = require('htmlparser')
+const imagesLoaded = require('imagesloaded'); // To detect images that fail to load
+const pixelmatch = require('pixelmatch'); // To diff canvas images
+const htmlparser = require('htmlparser'); // To parse HTML listing from ecstatic
 
 export default {
   data () {
     return {
       title: 'plotly.js image viewer',
-      fromGithub: 'master',
+      fromGithub: false,
       baseUrl: 'http://localhost:3000',
       mock: null,
       mockPayload: null,
+      numDiffPixels: 0,
 
       fuse: null,
       fuseOptions: {},
@@ -77,7 +88,8 @@ export default {
       AllMocks: [],
       results: [],
 
-      versions: ['master', '1.41.2', '1.31.0', '1.2.0']
+      versions: ['local', 'master', '1.41.2', '1.31.0', '1.2.0'],
+      errorMsg: false
     }
   },
   computed: {
@@ -106,38 +118,69 @@ export default {
         this.results = this.fuse.search(text).map(i => this.AllMocks[i]);
     },
     fetchMock: async function(item) {
-        var obj = this;
-        obj.mock = item;
         if (!item) return;
-        console.log(`Fetching ${this.json_url}`)
-        axios
-            .get(this.json_url)
-            .then(response => (obj.mockPayload = response.data))
-            .catch(error => (obj.mockPayload = null, console.log(error)))
-            .then(function(mockData) {
-                var layout = mockData.layout;
-                if('width' in layout && 'height' in layout) {
-                    if(layout.width < 1000) {
-                        obj.$refs.graph.style.width = layout.width + 'px';
-                    } else {
-                        obj.$refs.graph.style.width = '700px';
-                    }
+        this.errorMsg = false;
+        var obj = this;
 
-                    if(layout.height < 600) {
-                        obj.$refs.graph.style.height = layout.height + 'px';
-                    } else {
-                        obj.$refs.graph.style.height = '500px';
-                    }
-                } else {
-                    obj.$refs.graph.style.width = '700px';
-                    obj.$refs.graph.style.height = '500px';
-                }
-                obj.plotlyRender();
-            })
+        var imgLoad = imagesLoaded( obj.$refs.image );
+        imgLoad.on('fail', function( instance ) {
+            obj.errorMsg = `Cannot load image ${obj.$refs.image.src}`;
+            obj.$refs.image.src = 'favicon.ico';
+        })
 
+        var baselineImgLoad = imagesLoaded( obj.$refs.baseline );
+        baselineImgLoad.on('done', function( instance ) {
+          // successfully loaded baseline image
+          var   width = obj.$refs.baseline.width,
+                height = obj.$refs.baseline.height;
+          console.log(`Fetching ${obj.json_url}`)
+          axios
+              .get(obj.json_url)
+              .then(response => (obj.mockPayload = response.data))
+              .catch(error => (obj.mockPayload = null, console.log(error)))
+              .then(function(mockData) {
+                  if(!mockData) return;
+                  var width = obj.$refs.baseline.width
+                  obj.$refs.graph.style.width = width + 'px';
+                  obj.$refs.graph.style.height = height + 'px';
+                  obj.imgDiff(width, height)
+                  obj.plotlyRender();
+
+              })
+        })
+        obj.mock = item;
     },
     plotlyRender: function() {
+        if(this.mockPayload.layout && this.mockPayload.layout.width) delete(this.mockPayload.layout.width);
+        if(this.mockPayload.layout && this.mockPayload.layout.height) delete(this.mockPayload.layout.height);
+        if(!this.mockPayload.layout) this.mockPayload.layout = {};
+        this.mockPayload.layout.autosize = true;
         Plotly.newPlot('graph', this.mockPayload)
+    },
+    imgDiff: function( width, height) {
+        var ctx1 = this.convertImageToCanvas(this.$refs.baseline).getContext('2d'),
+            ctx2 = this.convertImageToCanvas(this.$refs.image).getContext('2d'),
+            diffCtx = this.$refs.diff.getContext('2d');
+
+        var img1 = ctx1.getImageData(0, 0, width, height),
+            img2 = ctx2.getImageData(0, 0, width, height),
+            diff = diffCtx.createImageData(width, height);
+
+        this.$refs.diff.width = width;
+        this.$refs.diff.height = height;
+
+        this.numDiffPixels = pixelmatch(img1.data, img2.data, diff.data, width, height, {threshold: 0.1});
+
+        diffCtx.putImageData(diff, 0, 0);
+    },
+    // Converts image to canvas; returns new canvas element
+    convertImageToCanvas: function(image) {
+    	var canvas = document.createElement("canvas");
+    	canvas.width = image.width;
+    	canvas.height = image.height;
+    	canvas.getContext("2d").drawImage(image, 0, 0);
+
+    	return canvas;
     },
     fetAllMocksGithub() {
         var url = 'https://api.github.com/repos/plotly/plotly.js/contents/test/image/mocks';
@@ -192,6 +235,9 @@ export default {
         this.fetchAllMocks();
     }
   },
+  mounted () {
+      [this.$refs.baseline, this.$refs.image].forEach(img => img.crossOrigin = "Anonymous");
+  },
   components: {
     Comparify, Opacity, JsonTree, Autocomplete
   }
@@ -216,10 +262,10 @@ header {
   background-color: #118DFF;
 }
 .controls {
-    width: 50%;
+    width: 75%;
     margin: 0 auto;
     position: relative;
-    display: inline-block;
+    display: flex;
 }
 
 input {
@@ -230,10 +276,10 @@ input {
     border: none;
     border: 1px solid #118DFF;
     outline: 0;
+    margin-right:5px;
 }
 
 select {
-    height:39px;
     border-radius: 10px;
     border: none;
     border: 1px solid #118DFF;
@@ -251,6 +297,9 @@ pre {
     margin: 0 auto;
 }
 
+.v-autocomplete {
+    width:100%;
+}
 ul.autocomplete, .v-autocomplete-list {
     width: 100%;
     margin:0; padding:0;
@@ -275,6 +324,11 @@ ul.autocomplete li, .v-autocomplete-list-item {
 ul.autocomplete li:hover, .v-autocomplete-item-active {
     color: white;
     background: #118DFF;
+}
+
+.error h3 {
+    font-size:1.4rem;
+    color:red;
 }
 
 footer {
