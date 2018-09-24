@@ -9,9 +9,10 @@
   },
   "dependencies": {
     "axios": "^0.18.0",
+    "fuse.js": "^3.2.1",
     "htmlparser": "^1.7.7",
+    "v-autocomplete": "^1.8.2",
     "vue": "^2.5.17",
-    "vue-fuse": "^2.0.2",
     "vue-json-tree": "^0.3.3"
   },
   "devDependencies": {

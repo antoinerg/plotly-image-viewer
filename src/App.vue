@@ -2,16 +2,13 @@
   <div class="container">
       <header>
         <a href="https://plot.ly"><img class="plotly-logo" src="https://tamarack-prismic.imgix.net/plotly/eb464d43-4ab4-427e-b617-482b62ba6c69_plotly-logo-white.png?w=100&auto=format"/></a>
+        <select>
+            <option v-for="version in versions" :key="version" :value="version">{{version}}</option>
+        </select>
       </header>
 
       <div class="controls">
-        <vue-fuse ref="fuse" :list="AllMocks" :defaultAll="false" event-name="results" placeholder="search mocks" @input="displaySuggestions=true"></vue-fuse>
-
-        <ul class="autocomplete" v-show="displaySuggestions">
-            <li v-for="result in results.slice(0,10)" @click="selectMock(AllMocks[result])">
-                {{AllMocks[result]}}
-            </li>
-        </ul>
+        <autocomplete :min-len="2" :wait="100" v-model="mock" @item-clicked="fetchMock" @update-items="updateResults" :component-item='AutocompleteItem' :items="results" :input-attrs="{placeholder: 'search mocks'}"></autocomplete>
       </div>
 
 
@@ -20,8 +17,8 @@
     <div v-if="true">
         <h3>Comparison slider</h3>
         <comparify value="50">
-          <img slot="first" :src="baseline">
-          <img slot="second" :src="image">
+          <img slot="first" :src="baseline"/>
+          <img slot="second" :src="image"/>
         </comparify>
     </div>
 
@@ -35,7 +32,7 @@
 
     <div v-if="mockPayload">
         <h3>Live</h3>
-        <div id="graph"/>
+        <div ref="graph" id="graph"/>
     </div>
 
     <div v-if="mockPayload">
@@ -45,6 +42,10 @@
         </div>
     </div>
 
+
+  <footer>
+      Serving assets from: <input type="text" v-model="baseUrl"/>
+  </footer>
   </div>
 </template>
 
@@ -52,7 +53,10 @@
 import Comparify from './components/Comparify.vue'
 import Opacity from './components/Opacity.vue'
 import JsonTree from 'vue-json-tree'
-import VueFuse from 'vue-fuse'
+
+import Autocomplete from 'v-autocomplete'
+import AutocompleteItem from './components/AutocompleteItem.vue'
+import Fuse from 'fuse.js'
 
 const axios = require('axios');
 const htmlparser = require('htmlparser')
@@ -61,12 +65,18 @@ export default {
   data () {
     return {
       title: 'plotly.js image viewer',
+      baseUrl: 'http://localhost:3000',
       mock: null,
       mockPayload: null,
+
+      fuse: null,
+      fuseOptions: {},
       displaySuggestions: true,
+      AutocompleteItem: AutocompleteItem,
       AllMocks: [],
       results: [],
-      baseUrl: 'http://localhost:3000'
+
+      versions: ['1.41.2', '1.31.0', '1.2.0']
     }
   },
   computed: {
@@ -85,18 +95,40 @@ export default {
     }
   },
   methods: {
-    selectMock: function(name) {
-        this.$refs.fuse.value = name;
-        this.mock = name;
-        this.fetchMock();
+    initFuse (mocks) {
+        this.fuse = new Fuse(mocks,this.fuseOptions);
     },
-    fetchMock: function() {
+    updateResults (text) {
+        this.results = this.fuse.search(text).slice(0,20).map(i => this.AllMocks[i]);
+    },
+    fetchMock: async function() {
+        var obj = this;
         console.log(`Fetching ${this.json_url}`)
         axios
             .get(this.json_url)
-            .then(response => (this.mockPayload = response.data))
-            .then(mockData => Plotly.newPlot('graph', mockData))
-            .catch(error => (this.mockPayload = null, console.log(error)))
+            .then(response => (obj.mockPayload = response.data))
+            .catch(error => (obj.mockPayload = null, console.log(error)))
+            .then(function(mockData) {
+                var layout = mockData.layout;
+                if('width' in layout && 'height' in layout) {
+                    if(layout.width < 1000) {
+                        obj.$refs.graph.style.width = layout.width + 'px';
+                    } else {
+                        obj.$refs.graph.style.width = '700px';
+                    }
+
+                    if(layout.height < 600) {
+                        obj.$refs.graph.style.height = layout.height + 'px';
+                    } else {
+                        obj.$refs.graph.style.height = '500px';
+                    }
+                } else {
+                    obj.$refs.graph.style.width = '700px';
+                    obj.$refs.graph.style.height = '500px';
+                }
+                Plotly.newPlot('graph', mockData)
+            })
+
     },
     async fetchAllMocks() {
         var handler = new htmlparser.DefaultHandler(function (error, dom) {
@@ -117,18 +149,15 @@ export default {
                 .map(child => child.children[3].children[0].attribs.href.split('/').splice(-1)[0].replace('.json',''))
 
                 obj.AllMocks = mocks;
+                obj.initFuse(mocks);
             })
     }
   },
   created () {
     this.fetchAllMocks();
-
-    this.$on('results', results => {
-      this.results = results
-    })
   },
   components: {
-    Comparify, Opacity, JsonTree
+    Comparify, Opacity, JsonTree, Autocomplete
   }
 }
 </script>
@@ -167,6 +196,15 @@ input {
     outline: 0;
 }
 
+select {
+    height:39px;
+    border-radius: 10px;
+    border: none;
+    border: 1px solid #118DFF;
+    outline: 0;
+    padding: 5px;
+}
+
 pre {
     text-align:left;
 }
@@ -177,7 +215,7 @@ pre {
     margin: 0 auto;
 }
 
-ul.autocomplete {
+ul.autocomplete, .v-autocomplete-list {
     width: 100%;
     margin:0; padding:0;
     list-style-type: none;
@@ -186,7 +224,7 @@ ul.autocomplete {
     background: rgba(255,255,255,0.85);
 }
 
-ul.autocomplete li {
+ul.autocomplete li, .v-autocomplete-list-item {
     font-size: 20px;
     width:100%;
     border-radius: 10px;
@@ -194,8 +232,16 @@ ul.autocomplete li {
     box-sizing: border-box;
 }
 
-ul.autocomplete li:hover {
+ul.autocomplete li:hover, .v-autocomplete-list-item:hover, .v-autocomplete-input .v-autocomplete-selected {
     color: white;
     background: #118DFF;
+}
+
+footer {
+    border-top: #eee 1px solid;
+    margin-top:50px;
+    padding-top:50px;
+    color: #a2b1c6;
+    font-size: 1.4 rem;
 }
 </style>
