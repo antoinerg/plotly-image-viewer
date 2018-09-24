@@ -99,7 +99,7 @@ export default {
         this.fuse = new Fuse(mocks,this.fuseOptions);
     },
     updateResults (text) {
-        this.results = this.fuse.search(text).slice(0,20).map(i => this.AllMocks[i]);
+        this.results = this.fuse.search(text).map(i => this.AllMocks[i]);
     },
     fetchMock: async function() {
         var obj = this;
@@ -222,6 +222,10 @@ ul.autocomplete, .v-autocomplete-list {
 
     z-index:100;
     background: rgba(255,255,255,0.85);
+
+    overflow-y: scroll;
+    max-height:80vh;
+    position: absolute;
 }
 
 ul.autocomplete li, .v-autocomplete-list-item {
@@ -232,7 +236,7 @@ ul.autocomplete li, .v-autocomplete-list-item {
     box-sizing: border-box;
 }
 
-ul.autocomplete li:hover, .v-autocomplete-list-item:hover, .v-autocomplete-input .v-autocomplete-selected {
+ul.autocomplete li:hover, .v-autocomplete-item-active {
     color: white;
     background: #118DFF;
 }
