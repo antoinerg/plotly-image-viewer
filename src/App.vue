@@ -1,5 +1,6 @@
 <template>
   <div class="container">
+      <loading :show="loading"/></loading>
       <header>
         <a href="https://plot.ly"><img class="plotly-logo" src="https://tamarack-prismic.imgix.net/plotly/eb464d43-4ab4-427e-b617-482b62ba6c69_plotly-logo-white.png?w=100&auto=format"/></a>
       </header>
@@ -9,6 +10,7 @@
         <select>
             <option v-for="version in versions" :key="version" :value="version">{{version}}</option>
         </select>
+        <input @click="orcaRender" style="width:25px; height:25px;" type="image" src="https://raw.githubusercontent.com/plotly/orca/master/orca_logo.png" />
       </div>
 
     <div class="error" v-if="errorMsg"><h3>{{errorMsg}}</h3></div>
@@ -62,6 +64,8 @@ import Comparify from './components/Comparify.vue'
 import Opacity from './components/Opacity.vue'
 import JsonTree from 'vue-json-tree'
 
+import Loading from 'vue-full-loading'
+
 import Autocomplete from 'v-autocomplete'
 import AutocompleteItem from './components/AutocompleteItem.vue'
 import Fuse from 'fuse.js'
@@ -77,6 +81,7 @@ export default {
       title: 'plotly.js image viewer',
       fromGithub: false,
       baseUrl: 'http://localhost:3000',
+      orcaUrl: 'http://localhost:9999',
       mock: null,
       mockPayload: null,
       numDiffPixels: 0,
@@ -89,7 +94,9 @@ export default {
       results: [],
 
       versions: ['local', 'master', '1.41.2', '1.31.0', '1.2.0'],
-      errorMsg: false
+      errorMsg: false,
+
+      loading: false
     }
   },
   computed: {
@@ -121,6 +128,7 @@ export default {
         if (!item) return;
         this.errorMsg = false;
         var obj = this;
+        obj.loading = true;
 
         var imgLoad = imagesLoaded( obj.$refs.image );
         imgLoad.on('fail', function( instance ) {
@@ -137,27 +145,53 @@ export default {
           axios
               .get(obj.json_url)
               .then(response => (obj.mockPayload = response.data))
-              .catch(error => (obj.mockPayload = null, console.log(error)))
+              .catch(error => (obj.mockPayload = null, obj.loading = false, console.log(error)))
               .then(function(mockData) {
                   if(!mockData) return;
-                  var width = obj.$refs.baseline.width
                   obj.$refs.graph.style.width = width + 'px';
                   obj.$refs.graph.style.height = height + 'px';
-                  obj.imgDiff(width, height)
+                  obj.imgDiff()
                   obj.plotlyRender();
-
               })
+              .finally(() => obj.loading = false)
         })
         obj.mock = item;
     },
     plotlyRender: function() {
-        if(this.mockPayload.layout && this.mockPayload.layout.width) delete(this.mockPayload.layout.width);
-        if(this.mockPayload.layout && this.mockPayload.layout.height) delete(this.mockPayload.layout.height);
-        if(!this.mockPayload.layout) this.mockPayload.layout = {};
-        this.mockPayload.layout.autosize = true;
-        Plotly.newPlot('graph', this.mockPayload)
+        var payload = JSON.parse(JSON.stringify(this.mockPayload));
+        if(!payload.layout) {
+            payload.layout = {};
+        } else {
+            if(payload.layout.width) delete(payload.layout.width);
+            if(payload.layout.height) delete(payload.layout.height);
+        }
+        payload.layout.autosize = true;
+        return Plotly.newPlot('graph', payload)
     },
-    imgDiff: function( width, height) {
+    orcaRender: function() {
+        var payload = JSON.parse(JSON.stringify(this.mockPayload));
+        if(!payload.layout) {
+            payload.layout = {};
+        }
+        payload.layout.width = this.$refs.baseline.width;
+        payload.layout.height = this.$refs.baseline.height;
+
+        var obj = this;
+        obj.loading = true;
+        axios({
+            method: 'post',
+            url: obj.orcaUrl,
+            data: payload,
+            responseType: 'arraybuffer'
+        })
+        .then(response => new Buffer(response.data, 'binary').toString('base64'))
+        .then(image => this.$refs.image.src = 'data:image/png;base64,' + image)
+        .then(obj.imgDiff)
+        .finally(() => obj.loading=false)
+    },
+    imgDiff: function() {
+        var width = this.$refs.baseline.width,
+            height = this.$refs.baseline.height;
         var ctx1 = this.convertImageToCanvas(this.$refs.baseline).getContext('2d'),
             ctx2 = this.convertImageToCanvas(this.$refs.image).getContext('2d'),
             diffCtx = this.$refs.diff.getContext('2d');
@@ -239,7 +273,7 @@ export default {
       [this.$refs.baseline, this.$refs.image].forEach(img => img.crossOrigin = "Anonymous");
   },
   components: {
-    Comparify, Opacity, JsonTree, Autocomplete
+    Comparify, Opacity, JsonTree, Autocomplete, Loading
   }
 }
 </script>
@@ -277,6 +311,7 @@ input {
     border: 1px solid #118DFF;
     outline: 0;
     margin-right:5px;
+    line-height: 25px;
 }
 
 select {
@@ -285,6 +320,7 @@ select {
     border: 1px solid #118DFF;
     outline: 0;
     padding: 5px;
+    line-height: 25px;
 }
 
 pre {
@@ -337,5 +373,9 @@ footer {
     padding-top:50px;
     color: #a2b1c6;
     font-size: 1.4 rem;
+}
+
+text {
+    text-rendering: geometricPrecision;
 }
 </style>
