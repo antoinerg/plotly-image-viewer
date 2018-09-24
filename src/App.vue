@@ -8,7 +8,7 @@
       </header>
 
       <div class="controls">
-        <autocomplete :min-len="2" :wait="100" v-model="mock" @item-clicked="fetchMock" @update-items="updateResults" :component-item='AutocompleteItem' :items="results" :input-attrs="{placeholder: 'search mocks'}"></autocomplete>
+        <autocomplete @submit="fetchMock(this.value)" :min-len="2" :wait="10" @item-selected="fetchMock" @update-items="updateResults" :component-item='AutocompleteItem' :items="results" :input-attrs="{placeholder: 'search mocks'}"></autocomplete>
       </div>
 
 
@@ -35,7 +35,7 @@
         <div ref="graph" id="graph"/>
     </div>
 
-    <div v-if="mockPayload">
+    <div v-if="false">
         <h3>mock data (<a :href="json_url">JSON</a>)</h3>
         <div>
             <json-tree :data="mockPayload" :level="2"></json-tree>
@@ -65,6 +65,7 @@ export default {
   data () {
     return {
       title: 'plotly.js image viewer',
+      fromGithub: 'master',
       baseUrl: 'http://localhost:3000',
       mock: null,
       mockPayload: null,
@@ -76,22 +77,25 @@ export default {
       AllMocks: [],
       results: [],
 
-      versions: ['1.41.2', '1.31.0', '1.2.0']
+      versions: ['master', '1.41.2', '1.31.0', '1.2.0']
     }
   },
   computed: {
+    rawGithubBaseUrl () {
+        return "https://raw.githubusercontent.com/plotly/plotly.js/" + this.fromGithub;
+    },
     image: function() {
         if(this.mock) return `${this.baseUrl}/build/test_images/${this.mock}.png`;
         return 'https://tamarack-prismic.imgix.net/plotly/89baddfcf14ab9543598ae83b84ae6db0d6e1c2f_00--58_105x.jpg?w=800&sat=0'
         // return 'https://images.unsplash.com/photo-1525936607120-6a787fb05d6a?ixlib=rb-0.3.5&ixid=eyJhcHBfaWQiOjEyMDd9&s=3cb09a29812d04718a5855dc61442612&auto=format&fit=crop&w=800&q=90'
     },
     baseline: function() {
-        if(this.mock) return `${this.baseUrl}/test/image/baselines/${this.mock}.png`;
+        if(this.mock) return `${this.fromGithub ? this.rawGithubBaseUrl : this.baseUrl}/test/image/baselines/${this.mock}.png`;
         return 'https://tamarack-prismic.imgix.net/plotly/89baddfcf14ab9543598ae83b84ae6db0d6e1c2f_00--58_105x.jpg?w=800&sat=-100'
         // return 'https://images.unsplash.com/photo-1510149053388-87292573d661?ixlib=rb-0.3.5&ixid=eyJhcHBfaWQiOjEyMDd9&s=18d7ef1ac6ffcd0a644aaa1d330278c6&auto=format&fit=crop&w=800&q=90';
     },
     json_url: function() {
-        if(this.mock) return `${this.baseUrl}/test/image/mocks/${this.mock}.json`;
+        if(this.mock) return `${this.fromGithub ? this.rawGithubBaseUrl : this.baseUrl}/test/image/mocks/${this.mock}.json`;
     }
   },
   methods: {
@@ -101,8 +105,10 @@ export default {
     updateResults (text) {
         this.results = this.fuse.search(text).map(i => this.AllMocks[i]);
     },
-    fetchMock: async function() {
+    fetchMock: async function(item) {
         var obj = this;
+        obj.mock = item;
+        if (!item) return;
         console.log(`Fetching ${this.json_url}`)
         axios
             .get(this.json_url)
@@ -126,20 +132,43 @@ export default {
                     obj.$refs.graph.style.width = '700px';
                     obj.$refs.graph.style.height = '500px';
                 }
-                Plotly.newPlot('graph', mockData)
+                obj.plotlyRender();
             })
 
     },
-    async fetchAllMocks() {
-        var handler = new htmlparser.DefaultHandler(function (error, dom) {
-            if (error) console.log(error)
-        })
-        var parser = new htmlparser.Parser(handler);
+    plotlyRender: function() {
+        Plotly.newPlot('graph', this.mockPayload)
+    },
+    fetAllMocksGithub() {
+        var url = 'https://api.github.com/repos/plotly/plotly.js/contents/test/image/mocks';
 
         var obj = this;
         axios
-            .get(`${this.baseUrl}/test/image/mocks/`)
+            .get(url)
             .then(function(response) {
+
+                var mocks = response.data
+                .map(child => child.name.split('/').splice(-1)[0].replace('.json',''))
+
+                return mocks;
+            })
+            .then(function(mocks) {
+                obj.initFuse(mocks);
+                obj.AllMocks = mocks;
+            })
+    },
+    async fetchAllMocks() {
+        var url = `${this.baseUrl}/test/image/mocks/`;
+
+        var obj = this;
+        axios
+            .get(url)
+            .then(function(response) {
+                var handler = new htmlparser.DefaultHandler(function (error, dom) {
+                    if (error) console.log(error)
+                })
+                var parser = new htmlparser.Parser(handler);
+
                 parser.parseComplete(response.data);
 
                 var children = handler.dom[2].children[3].children[3].children;
@@ -148,13 +177,20 @@ export default {
                 .filter((child,i) => (i % 2 === 0))
                 .map(child => child.children[3].children[0].attribs.href.split('/').splice(-1)[0].replace('.json',''))
 
-                obj.AllMocks = mocks;
+                return mocks;
+            })
+            .then(function(mocks) {
                 obj.initFuse(mocks);
+                obj.AllMocks = mocks;
             })
     }
   },
   created () {
-    this.fetchAllMocks();
+    if (this.fromGithub) {
+        this.fetAllMocksGithub();
+    } else {
+        this.fetchAllMocks();
+    }
   },
   components: {
     Comparify, Opacity, JsonTree, Autocomplete
