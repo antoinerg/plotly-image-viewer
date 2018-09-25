@@ -6,7 +6,7 @@
       </header>
 
       <div class="controls">
-        <autocomplete @submit="fetchMock(this.value)" :min-len="0" :wait="10" @item-selected="fetchMock" @update-items="updateResults" :component-item='AutocompleteItem' :items="results" :input-attrs="{placeholder: 'search mocks'}"></autocomplete>
+        <autocomplete @submit="navigate(this.value)" :min-len="0" :wait="10" @item-selected="navigate" @update-items="updateResults" :component-item='AutocompleteItem' :items="results" :input-attrs="{placeholder: 'search mocks'}"></autocomplete>
         <select>
             <option v-for="version in versions" :key="version" :value="version">{{version}}</option>
         </select>
@@ -79,25 +79,36 @@ export default {
   data () {
     return {
       title: 'plotly.js image viewer',
-      fromGithub: false,
+      fromGithub: false, // Either false of the name of the branch/tag
+      versions: ['local', 'master', '1.41.2', '1.31.0', '1.2.0'],
       baseUrl: 'http://localhost:3000',
-      orcaUrl: 'http://localhost:9999',
+      orcaUrl: 'http://localhost:9091',
+
       mock: null,
       mockPayload: null,
       numDiffPixels: 0,
 
+      // Search mocks
       fuse: null,
       fuseOptions: {},
-      displaySuggestions: true,
       AutocompleteItem: AutocompleteItem,
       AllMocks: [],
       results: [],
 
-      versions: ['local', 'master', '1.41.2', '1.31.0', '1.2.0'],
-      errorMsg: false,
+      // Plotly.js config
+      mapboxAccessToken: 'pk.eyJ1IjoiZXRwaW5hcmQiLCJhIjoiY2luMHIzdHE0MGFxNXVubTRxczZ2YmUxaCJ9.hwWZful0U2CQxit4ItNsiQ',
 
+      // App state
+      errorMsg: false,
       loading: false
     }
+  },
+  beforeRouteUpdate (to, from, next) {
+    // react to route changes...
+    // don't forget to call next()
+    console.log(`Route update ${to.params.id}`)
+    this.fetchMock(to.params.id)
+    next();
   },
   computed: {
     rawGithubBaseUrl () {
@@ -124,19 +135,31 @@ export default {
     updateResults (text) {
         this.results = this.fuse.search(text).map(i => this.AllMocks[i]);
     },
+    navigate (item) {
+        this.$router.replace({params: { id: item }});
+    },
     fetchMock: async function(item) {
         if (!item) return;
         this.errorMsg = false;
+        this.mockPayload = null;
+
         var obj = this;
         obj.loading = true;
 
         var imgLoad = imagesLoaded( obj.$refs.image );
+        var baselineImgLoad = imagesLoaded( obj.$refs.baseline );
         imgLoad.on('fail', function( instance ) {
             obj.errorMsg = `Cannot load image ${obj.$refs.image.src}`;
             obj.$refs.image.src = 'favicon.ico';
         })
 
-        var baselineImgLoad = imagesLoaded( obj.$refs.baseline );
+        baselineImgLoad.on('fail', function( instance ) {
+            obj.errorMsg = `Cannot load image ${obj.$refs.baseline.src}`;
+            obj.$refs.baseline.src = 'favicon.ico';
+            obj.loading = false;
+        })
+
+
         baselineImgLoad.on('done', function( instance ) {
           // successfully loaded baseline image
           var   width = obj.$refs.baseline.width,
@@ -158,6 +181,7 @@ export default {
         obj.mock = item;
     },
     plotlyRender: function() {
+        if(!this.mockPayload) return;
         var payload = JSON.parse(JSON.stringify(this.mockPayload));
         if(!payload.layout) {
             payload.layout = {};
@@ -166,9 +190,14 @@ export default {
             if(payload.layout.height) delete(payload.layout.height);
         }
         payload.layout.autosize = true;
+
+        payload.config = {
+            mapboxAccessToken: this.mapboxAccessToken
+        }
         return Plotly.newPlot('graph', payload)
     },
     orcaRender: function() {
+        if(!this.mockPayload) return;
         var payload = JSON.parse(JSON.stringify(this.mockPayload));
         if(!payload.layout) {
             payload.layout = {};
@@ -271,6 +300,7 @@ export default {
   },
   mounted () {
       [this.$refs.baseline, this.$refs.image].forEach(img => img.crossOrigin = "Anonymous");
+      this.fetchMock(this.$route.params.id)
   },
   components: {
     Comparify, Opacity, JsonTree, Autocomplete, Loading
