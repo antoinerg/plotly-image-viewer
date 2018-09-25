@@ -58,6 +58,7 @@
 
   <footer>
       Serving assets from: <input type="text" v-model="baseUrl"/>
+      Orca rendering endopoint: <input type="text" v-model="orcaUrl"/>
   </footer>
   </div>
 </template>
