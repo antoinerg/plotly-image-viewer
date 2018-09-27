@@ -1,66 +1,74 @@
 <template>
-<div class="container">
+<div>
     <loading :show="loading" />
     <header>
         <a href="https://plot.ly"><img class="plotly-logo" src="https://tamarack-prismic.imgix.net/plotly/eb464d43-4ab4-427e-b617-482b62ba6c69_plotly-logo-white.png?w=100&auto=format"/></a>
-    </header>
-
-    <div class="controls">
         <autocomplete @submit="navigate(this.value)" :min-len="0" :wait="10" @item-selected="navigate" @update-items="updateResults" :component-item='AutocompleteItem' :items="results" :input-attrs="{placeholder: 'search mocks'}"></autocomplete>
+        <span style="color:white; font-size:1.5em">@</span>
         <select>
             <option v-for="version in versions" :key="version" :value="version">{{version}}</option>
         </select>
-        <input @click="orcaRender" style="width:25px; height:25px;" type="image" src="https://raw.githubusercontent.com/plotly/orca/master/orca_logo.png" />
+        <a target="_blank" :href="json_url">
+            <font-awesome-layers class="fa-2x">
+              <font-awesome-icon icon="circle" color="white" />
+              <font-awesome-icon icon="download" transform="shrink-7" color="#118DFF" />
+            </font-awesome-layers>
+        </a>
+        <input @click="orcaRender" style="width:35px; height:35px;" type="image" src="https://raw.githubusercontent.com/plotly/orca/master/orca_logo.png" />
+        <font-awesome-layers class="fa-2x">
+          <font-awesome-icon icon="circle" :color="errorMsg ? 'red' : 'green'" />
+          <font-awesome-icon :icon="errorMsg ? 'exclamation': 'check'" transform="shrink-7" color="white" />
+        </font-awesome-layers>
+    </header>
 
-      </div>
-
-    <div class="error" v-if="errorMsg"><h3>{{errorMsg}}</h3>
-    </div>
-    <div class="preview">
-        <div>
-            <h3>Comparison slider</h3>
-            <comparify value="50">
-                <img ref="baseline" slot="first" :src="baseline"/>
-                <img ref="image" slot="second" :src="image"/>
-
-            </comparify>
-        </div>
-
-        <div v-if="mock">
-            <h3>Diff ({{numDiffPixels}} different pixels)</h3>
-            <canvas ref="diff" />
-        </div>
-
-        <div v-if="false">
-            <h3>Opacity slider</h3>
-            <opacity value="50">
-              <img slot="first" :src="baseline">
-              <img slot="second" :src="image">
-            </opacity>
-        </div>
-
-        <div v-if="mockPayload">
-            <h3>Live</h3>
-                <comparify value="50">
-                  <img slot="first" :src="baseline"/>
-                  <div slot="second" id="graph" ref="graph"/>
-                </comparify>
-        </div>
-
-        <div v-if="false">
-            <h3>mock data (<a :href="json_url">JSON</a>)</h3>
+    <div class="container">
+        <div class="preview">
             <div>
-                <json-tree :data="mockPayload" :level="2"></json-tree>
+                <h3>Comparison slider</h3>
+                <comparify value="50">
+                    <img ref="baseline" slot="first" :src="baseline"/>
+                    <img ref="image" slot="second" :src="image"/>
+
+                </comparify>
+            </div>
+
+            <div v-if="mock">
+                <h3>Diff ({{numDiffPixels}} different pixels)</h3>
+                <canvas ref="diff" />
+            </div>
+
+            <div v-if="false">
+                <h3>Opacity slider</h3>
+                <opacity value="50">
+                  <img slot="first" :src="baseline">
+                  <img slot="second" :src="image">
+                </opacity>
+            </div>
+
+            <div v-if="mockPayload">
+                <h3>Live</h3>
+                    <comparify value="50">
+                      <img slot="first" :src="baseline"/>
+                      <div slot="second" id="graph" ref="graph"/>
+                    </comparify>
+            </div>
+
+            <div v-if="mockPayload">
+                <h3>mock data (<a :href="json_url">JSON</a>)</h3>
+                <div>
+                    <json-tree :data="mockPayload" :level="2"></json-tree>
+                </div>
             </div>
         </div>
-    </div>
 
 
-  <footer>
-      Serving assets from: <input type="text" v-model="baseUrl"/>
-      Orca rendering endopoint: <input type="text" v-model="orcaUrl"/>
-  </footer>
-  </div>
+      <footer>
+          Serving assets from: <input type="text" v-model="baseUrl"/>
+          Orca rendering endopoint: <input type="text" v-model="orcaUrl"/>
+      </footer>
+      </div>
+</div>
+
 </template>
 
 <script>
@@ -86,7 +94,7 @@ export default {
             fromGithub: false, // Either false of the name of the branch/tag
             versions: ['local', 'master', '1.41.2', '1.31.0', '1.2.0'],
             baseUrl: 'http://localhost:3000',
-            orcaUrl: 'http://localhost:9091',
+            orcaUrl: 'http://localhost:9999',
 
             mock: null,
             mockPayload: null,
@@ -164,7 +172,7 @@ export default {
                     obj.loading = false;
                 })
 
-                baselineImgLoad.on('done', function() {
+                baselineImgLoad.on('always', function() {
                     // successfully loaded baseline image
                     var width = obj.$refs.baseline.width,
                         height = obj.$refs.baseline.height;
@@ -180,6 +188,7 @@ export default {
                             obj.imgDiff()
                             obj.plotlyRender();
                         })
+                        .then(function() { window.gd = obj.$refs.graph})
                         .finally(() => obj.loading = false)
                 })
                 obj.mock = item;
@@ -221,6 +230,8 @@ export default {
                     .then(image => this.$refs.image.src = 'data:image/png;base64,' + image)
                     .then(obj.imgDiff)
                     .finally(() => obj.loading = false)
+
+                // Test agasint other Orca instance
             },
             imgDiff: function() {
                 var width = this.$refs.baseline.width,
@@ -237,7 +248,7 @@ export default {
                 this.$refs.diff.height = height;
 
                 this.numDiffPixels = pixelmatch(img1.data, img2.data, diff.data, width, height, {
-                    threshold: 0.1
+                    threshold: 0.01
                 });
 
                 diffCtx.putImageData(diff, 0, 0);
@@ -321,6 +332,7 @@ export default {
 <style>
 body {
     font-family: 'Dosis', sans-serif;
+    margin:0px;
 }
 
 .container {
@@ -331,40 +343,37 @@ body {
 }
 
 header {
-    margin-bottom: 25px;
-}
-
-.plotly-logo {
-    border-radius: 10px;
+    padding:10px;
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: space-around;
+    align-items: center;
     background-color: #118DFF;
 }
 
-.controls {
-    width: 75%;
-    margin: 0 auto;
-    position: relative;
-    display: flex;
+header * {
+    margin-right: 5px;
 }
 
-input {
-    width: 100%;
+img.plotly-logo {height:100%}
+
+input, select {
     padding: 5px;
     font-size: 20px;
     border-radius: 10px;
     border: none;
     border: 1px solid #118DFF;
     outline: 0;
-    margin-right: 5px;
     line-height: 25px;
 }
 
-select {
-    border-radius: 10px;
-    border: none;
-    border: 1px solid #118DFF;
-    outline: 0;
-    padding: 5px;
-    line-height: 25px;
+.v-autocomplete {
+    position: relative;
+    flex-grow:4;
+}
+
+.v-autocomplete-input {
+    width:100%;
 }
 
 pre {
@@ -379,15 +388,9 @@ pre {
     margin: 0 auto;
 }
 
-.v-autocomplete {
-    width: 100%;
-}
-
 ul.autocomplete,
 .v-autocomplete-list {
     width: 100%;
-    margin: 0;
-    padding: 0;
     list-style-type: none;
 
     z-index: 100;
