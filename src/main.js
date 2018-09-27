@@ -17,10 +17,10 @@ const router = new VueRouter({
 
 // FontAwesome: https://fontawesome.com/how-to-use/on-the-web/using-with/vuejs
 import { library } from '@fortawesome/fontawesome-svg-core'
-import { faExclamation, faCheck,  faDownload, faSquare, faCircle } from '@fortawesome/free-solid-svg-icons'
+import { faExclamation, faCheck,  faDownload, faSquare, faCircle, faCog } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon, FontAwesomeLayers } from '@fortawesome/vue-fontawesome'
 
-library.add(faExclamation, faCheck, faDownload, faSquare, faCircle)
+library.add(faExclamation, faCheck, faDownload, faSquare, faCircle, faCog)
 Vue.component('font-awesome-icon', FontAwesomeIcon)
 Vue.component('font-awesome-layers', FontAwesomeLayers)
 

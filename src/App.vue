@@ -4,21 +4,29 @@
     <header>
         <a href="https://plot.ly"><img class="plotly-logo" src="https://tamarack-prismic.imgix.net/plotly/eb464d43-4ab4-427e-b617-482b62ba6c69_plotly-logo-white.png?w=100&auto=format"/></a>
         <autocomplete @submit="navigate(this.value)" :min-len="0" :wait="10" @item-selected="navigate" @update-items="updateResults" :component-item='AutocompleteItem' :items="results" :input-attrs="{placeholder: 'search mocks'}"></autocomplete>
-        <span style="color:white; font-size:1.5em">@</span>
-        <select>
+        <span style="color:white; font-size:1.5em">plotly.js @ </span>
+        <select v-model="fromGithub">
             <option v-for="version in versions" :key="version" :value="version">{{version}}</option>
         </select>
-        <a target="_blank" :href="json_url">
+        <a alt="Download JSON" target="_blank" :href="json_url">
             <font-awesome-layers class="fa-2x">
               <font-awesome-icon icon="circle" color="white" />
               <font-awesome-icon icon="download" transform="shrink-7" color="#118DFF" />
             </font-awesome-layers>
         </a>
-        <input @click="orcaRender" style="width:35px; height:35px;" type="image" src="https://raw.githubusercontent.com/plotly/orca/master/orca_logo.png" />
-        <font-awesome-layers class="fa-2x">
-          <font-awesome-icon icon="circle" :color="errorMsg ? 'red' : 'green'" />
-          <font-awesome-icon :icon="errorMsg ? 'exclamation': 'check'" transform="shrink-7" color="white" />
+        <input alt="Render in browser" @click="plotlyRender" style="width:35px; height:35px;" type="image" src="logo.svg" />
+        <input alt="Render on Orca" @click="orcaRender" style="width:35px; height:35px;" type="image" src="https://raw.githubusercontent.com/plotly/orca/master/orca_logo.png" />
+        <font-awesome-layers :alt="errorMsg" class="fa-2x">
+            <font-awesome-icon icon="circle" :color="errorMsg ? 'red' : 'green'" />
+            <font-awesome-icon :icon="errorMsg ? 'exclamation': 'check'" transform="shrink-7" color="white" />
         </font-awesome-layers>
+
+        <a alt="Configuration" href="#config">
+            <font-awesome-layers class="fa-2x">
+              <font-awesome-icon icon="circle" color="white" />
+              <font-awesome-icon icon="cog" transform="shrink-7" color="#118DFF" />
+            </font-awesome-layers>
+        </a>
     </header>
 
     <div class="container">
@@ -28,6 +36,8 @@
                 <comparify value="50">
                     <img ref="baseline" slot="first" :src="baseline"/>
                     <img ref="image" slot="second" :src="image"/>
+
+
 
                 </comparify>
             </div>
@@ -60,15 +70,12 @@
                 </div>
             </div>
         </div>
-
-
-      <footer>
-          Serving assets from: <input type="text" v-model="baseUrl"/>
-          Orca rendering endopoint: <input type="text" v-model="orcaUrl"/>
-      </footer>
-      </div>
+    </div>
+    <footer id="config">
+        <h2>Serving local assets from:</h2><input type="text" v-model="baseUrl"/>
+        <h2>Orca endpoint:</h2> <input type="text" v-model="orcaUrl"/>
+    </footer>
 </div>
-
 </template>
 
 <script>
@@ -91,8 +98,8 @@ export default {
     data() {
         return {
             title: 'plotly.js image viewer',
-            fromGithub: false, // Either false of the name of the branch/tag
-            versions: ['local', 'master', '1.41.2', '1.31.0', '1.2.0'],
+            fromGithub: 'local', // Either false of the name of the branch/tag
+            versions: ['local', 'master', 'v1.41.2', 'v1.31.0', 'v1.2.0'],
             baseUrl: 'http://localhost:3000',
             orcaUrl: 'http://localhost:9999',
 
@@ -116,7 +123,7 @@ export default {
         }
     },
     beforeRouteUpdate(to, from, next) {
-        this.fetchMock(to.params.id)
+        if (to.params.id !== 'config') this.fetchMock(to.params.id);
         next();
     },
     computed: {
@@ -125,16 +132,16 @@ export default {
         },
         image: function() {
             if (this.mock) return `${this.baseUrl}/build/test_images/${this.mock}.png`;
-            return 'https://tamarack-prismic.imgix.net/plotly/89baddfcf14ab9543598ae83b84ae6db0d6e1c2f_00--58_105x.jpg?w=800&sat=0'
+            return 'overlay.jpg'
             // return 'https://images.unsplash.com/photo-1525936607120-6a787fb05d6a?ixlib=rb-0.3.5&ixid=eyJhcHBfaWQiOjEyMDd9&s=3cb09a29812d04718a5855dc61442612&auto=format&fit=crop&w=800&q=90'
         },
         baseline: function() {
-            if (this.mock) return `${this.fromGithub ? this.rawGithubBaseUrl : this.baseUrl}/test/image/baselines/${this.mock}.png`;
-            return 'https://tamarack-prismic.imgix.net/plotly/89baddfcf14ab9543598ae83b84ae6db0d6e1c2f_00--58_105x.jpg?w=800&sat=-100'
+            if (this.mock) return `${this.fromGithub !== 'local' ? this.rawGithubBaseUrl : this.baseUrl}/test/image/baselines/${this.mock}.png`;
+            return 'baseline.jpg'
             // return 'https://images.unsplash.com/photo-1510149053388-87292573d661?ixlib=rb-0.3.5&ixid=eyJhcHBfaWQiOjEyMDd9&s=18d7ef1ac6ffcd0a644aaa1d330278c6&auto=format&fit=crop&w=800&q=90';
         },
         json_url: function() {
-            if (this.mock) return `${this.fromGithub ? this.rawGithubBaseUrl : this.baseUrl}/test/image/mocks/${this.mock}.json`;
+            if (this.mock) return `${this.fromGithub !== 'local' ? this.rawGithubBaseUrl : this.baseUrl}/test/image/mocks/${this.mock}.json`;
         }
     },
     methods: {
@@ -188,64 +195,70 @@ export default {
                             obj.imgDiff()
                             obj.plotlyRender();
                         })
-                        .then(function() { window.gd = obj.$refs.graph})
                         .finally(() => obj.loading = false)
                 })
                 obj.mock = item;
-            },
-            plotlyRender: function() {
-                if (!this.mockPayload) return;
-                var payload = JSON.parse(JSON.stringify(this.mockPayload));
-                if (!payload.layout) {
-                    payload.layout = {};
-                } else {
-                    if (payload.layout.width) delete(payload.layout.width);
-                    if (payload.layout.height) delete(payload.layout.height);
-                }
-                payload.layout.autosize = true;
+        },
+        plotlyRender: function() {
+            if (!this.mockPayload) return;
+            var payload = JSON.parse(JSON.stringify(this.mockPayload));
+            if (!payload.layout) {
+                payload.layout = {};
+            } else {
+                if (payload.layout.width) delete(payload.layout.width);
+                if (payload.layout.height) delete(payload.layout.height);
+            }
+            payload.layout.autosize = true;
 
-                payload.config = {
-                    mapboxAccessToken: this.mapboxAccessToken
-                }
-                return Plotly.newPlot('graph', payload)
-            },
-            orcaRender: function() {
-                if (!this.mockPayload) return;
-                var payload = JSON.parse(JSON.stringify(this.mockPayload));
-                if (!payload.layout) {
-                    payload.layout = {};
-                }
-                payload.layout.width = this.$refs.baseline.width;
-                payload.layout.height = this.$refs.baseline.height;
+            payload.config = {
+                mapboxAccessToken: this.mapboxAccessToken
+            }
 
-                var obj = this;
-                obj.loading = true;
-                axios({
-                        method: 'post',
-                        url: obj.orcaUrl,
-                        data: payload,
-                        responseType: 'arraybuffer'
+            var obj = this;
+            obj.loading=true;
+            return Plotly.newPlot('graph', payload)
+                    .then(function() {
+                        window.gd = obj.$refs.graph
+                        setTimeout(() => obj.loading = false, 100);
                     })
-                    .then(response => new Buffer(response.data, 'binary').toString('base64'))
-                    .then(image => this.$refs.image.src = 'data:image/png;base64,' + image)
-                    .then(obj.imgDiff)
-                    .finally(() => obj.loading = false)
+        },
+        orcaRender: function() {
+            if (!this.mockPayload) return;
+            var payload = JSON.parse(JSON.stringify(this.mockPayload));
+            if (!payload.layout) {
+                payload.layout = {};
+            }
+            payload.layout.width = this.$refs.baseline.width;
+            payload.layout.height = this.$refs.baseline.height;
 
-                // Test agasint other Orca instance
-            },
-            imgDiff: function() {
-                var width = this.$refs.baseline.width,
-                    height = this.$refs.baseline.height;
-                var ctx1 = this.convertImageToCanvas(this.$refs.baseline).getContext('2d'),
-                    ctx2 = this.convertImageToCanvas(this.$refs.image).getContext('2d'),
-                    diffCtx = this.$refs.diff.getContext('2d');
+            var obj = this;
+            obj.loading = true;
+            axios({
+                method: 'post',
+                url: obj.orcaUrl,
+                data: payload,
+                responseType: 'arraybuffer'
+            })
+            .then(response => new Buffer(response.data, 'binary').toString('base64'))
+            .then(image => this.$refs.image.src = 'data:image/png;base64,' + image)
+            .then(obj.imgDiff)
+            .finally(() => obj.loading = false)
 
-                var img1 = ctx1.getImageData(0, 0, width, height),
-                    img2 = ctx2.getImageData(0, 0, width, height),
-                    diff = diffCtx.createImageData(width, height);
+            // Test agasint other Orca instance
+        },
+        imgDiff: function() {
+            var width = this.$refs.baseline.width,
+                height = this.$refs.baseline.height;
+            var ctx1 = this.convertImageToCanvas(this.$refs.baseline).getContext('2d'),
+                ctx2 = this.convertImageToCanvas(this.$refs.image).getContext('2d'),
+                diffCtx = this.$refs.diff.getContext('2d');
 
-                this.$refs.diff.width = width;
-                this.$refs.diff.height = height;
+            var img1 = ctx1.getImageData(0, 0, width, height),
+                img2 = ctx2.getImageData(0, 0, width, height),
+                diff = diffCtx.createImageData(width, height);
+
+            this.$refs.diff.width = width;
+            this.$refs.diff.height = height;
 
                 this.numDiffPixels = pixelmatch(img1.data, img2.data, diff.data, width, height, {
                     threshold: 0.01
@@ -309,7 +322,7 @@ export default {
             }
     },
     created() {
-        if (this.fromGithub) {
+        if (this.fromGithub !== 'local') {
             this.fetAllMocksGithub();
         } else {
             this.fetchAllMocks();
@@ -332,32 +345,57 @@ export default {
 <style>
 body {
     font-family: 'Dosis', sans-serif;
-    margin:0px;
+    margin: 0px;
+    background-color: #118DFF;
 }
 
 .container {
     padding: 10px;
     text-align: center;
     margin: 0 auto;
-    width: 90%;
+    width: 100%;
+    background-color: white;
 }
 
 header {
-    padding:10px;
+    padding: 10px;
     display: flex;
     flex-wrap: nowrap;
     justify-content: space-around;
     align-items: center;
-    background-color: #118DFF;
+
 }
 
 header * {
     margin-right: 5px;
 }
 
-img.plotly-logo {height:100%}
+footer {
+    padding: 50px;
+    display: flex;
+    flex-direction: column;
+    text-align: center;
+    color: white;
+    border-top: #eee 1px solid;
+    font-size: 1.4 rem;
+    background-color: #118DFF;
+}
 
-input, select {
+footer input {
+    text-align: center;
+}
+
+footer h2 {
+    margin-bottom: 5px;
+    font-size: 1.5em;
+}
+
+img.plotly-logo {
+    height: 100%
+}
+
+input,
+select {
     padding: 5px;
     font-size: 20px;
     border-radius: 10px;
@@ -369,11 +407,11 @@ input, select {
 
 .v-autocomplete {
     position: relative;
-    flex-grow:4;
+    flex-grow: 4;
 }
 
 .v-autocomplete-input {
-    width:100%;
+    width: 100%;
 }
 
 pre {
@@ -388,7 +426,6 @@ pre {
     margin: 0 auto;
 }
 
-ul.autocomplete,
 .v-autocomplete-list {
     width: 100%;
     list-style-type: none;
@@ -401,7 +438,6 @@ ul.autocomplete,
     position: absolute;
 }
 
-ul.autocomplete li,
 .v-autocomplete-list-item {
     font-size: 20px;
     width: 100%;
@@ -410,26 +446,8 @@ ul.autocomplete li,
     box-sizing: border-box;
 }
 
-ul.autocomplete li:hover,
 .v-autocomplete-item-active {
     color: white;
     background: #118DFF;
-}
-
-.error h3 {
-    font-size: 1.4rem;
-    color: red;
-}
-
-footer {
-    border-top: #eee 1px solid;
-    margin-top: 50px;
-    padding-top: 50px;
-    color: #a2b1c6;
-    font-size: 1.4 rem;
-}
-
-text {
-    text-rendering: geometricPrecision;
 }
 </style>
