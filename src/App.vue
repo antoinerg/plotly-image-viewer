@@ -343,18 +343,24 @@ export default {
 </script>
 
 <style>
-body {
+html, body {
     font-family: 'Dosis', sans-serif;
-    margin: 0px;
+    margin: 0px; padding: 0px;
     background-color: #118DFF;
 }
 
+
+
 .container {
-    padding: 10px;
+    background-color: white;
+    padding-top: 100px;
+    padding-bottom: 50px;
+}
+
+.preview {
     text-align: center;
     margin: 0 auto;
-    width: 100%;
-    background-color: white;
+    width: 90%;
 }
 
 header {
@@ -363,7 +369,11 @@ header {
     flex-wrap: nowrap;
     justify-content: space-around;
     align-items: center;
-
+    z-index: 1000;
+    background-color: #118DFF;
+    box-sizing: border-box;
+    position: fixed;
+    width: 100%;
 }
 
 header * {
@@ -371,14 +381,16 @@ header * {
 }
 
 footer {
-    padding: 50px;
+    width:75%;
+    margin: 0 auto;
+    padding: 25px;
     display: flex;
     flex-direction: column;
     text-align: center;
     color: white;
-    border-top: #eee 1px solid;
     font-size: 1.4 rem;
     background-color: #118DFF;
+    box-sizing: border-box;
 }
 
 footer input {

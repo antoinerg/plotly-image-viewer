@@ -96,7 +96,7 @@ export default {
   position: absolute;
   overflow:hidden;
   height: 100%;
-  widht: 100%;
+  width: 100%;
   top:0;
 }
 .compare-overlay__content{
