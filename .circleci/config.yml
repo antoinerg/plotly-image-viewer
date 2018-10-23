@@ -33,6 +33,10 @@ jobs:
             - node_modules
           key: v1-dependencies-{{ checksum "package.json" }}
       - run: npm run build
+      - persist_to_workspace:
+          root: .
+          paths:
+            - node_modules      
       - store_artifacts:
           path: dist/
           destination: /plotly-image-viewer/
