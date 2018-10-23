@@ -77,6 +77,8 @@
 </template>
 
 <script>
+/*global Plotly*/
+
 import Comparify from './components/Comparify.vue'
 import Opacity from './components/Opacity.vue'
 import JsonTree from 'vue-json-tree'
@@ -181,7 +183,7 @@ export default {
           // successfully loaded baseline image
           var width = obj.$refs.baseline.width,
             height = obj.$refs.baseline.height;
-          console.log(`Fetching ${obj.json_url}`)
+          // TODO: console.log(`Fetching ${obj.json_url}`)
           axios
             .get(obj.json_url)
             .then(response => (obj.mockPayload = response.data))
