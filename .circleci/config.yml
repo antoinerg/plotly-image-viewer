@@ -37,4 +37,4 @@ jobs:
       - run: npm run build
       - store_artifacts:
           path: dist/
-          destination: /dist/
+          destination: /plotly-image-viewer/
