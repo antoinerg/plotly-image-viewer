@@ -6,7 +6,7 @@ version: 2
 jobs:
   test-syntax:
     docker:
-      - image: circle/node:10-stretch
+      - image: circleci/node:10-stretch
 
     working_directory: ~/repo
     steps:
@@ -14,7 +14,7 @@ jobs:
       - run: npm run lint
 
   build:
-  
+
     docker:
       # specify the version you desire here
       - image: circleci/node:10-stretch
