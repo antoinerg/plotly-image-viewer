@@ -36,7 +36,7 @@ jobs:
       - persist_to_workspace:
           root: .
           paths:
-            - node_modules      
+            - node_modules
       - store_artifacts:
           path: dist/
           destination: /plotly-image-viewer/
@@ -46,6 +46,10 @@ workflows:
   build-and-test:
     jobs:
       - build
-      - test-syntax:
-          requires:
-            - build
+          filters:
+            branches:
+              ignore: gh-pages
+      - test-syntax
+          filters:
+            branches:
+              ignore: gh-pages
