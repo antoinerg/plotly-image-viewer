@@ -22,8 +22,14 @@
 
   <div class="container">
     <header style="color: white;">
-      <input alt="Render in browser" @click="plotlyRender" style="width:50px; height:50px;" type="image" src="logo.svg" />
-      <input alt="Render on Orca" @click="orcaRender" style="width:50px; height:50pxpx;" type="image" src="https://raw.githubusercontent.com/plotly/orca/master/orca_logo.png" />
+      <a alt="Render in plotly.js" @click="plotlyRender" style="display:flex; align-items: center; height:50px">
+        <img style="width:50px; height:50px;" src="logo.svg"/>
+        <span style="font-size: 1.5em">plotly.js</span>
+      </a>
+      <a alt="Render on Orca" @click="orcaRender" style="display:flex; align-items: center; height:50px">
+        <img style="width:50px; height:50px;" src="https://raw.githubusercontent.com/plotly/orca/master/orca_logo.png"/>
+        <span style="font-size: 1.5em">Orca</span>
+      </a>
       <div>
         <span style="font-size:1.5em">plotly.js @ </span>
         <select v-model="fromGithub">
