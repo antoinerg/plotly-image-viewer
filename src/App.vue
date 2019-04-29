@@ -1,25 +1,16 @@
 <template>
 <div>
   <loading :show="loading" />
-  <header>
+  <header class="main">
     <a href="https://plot.ly"><img class="plotly-logo" src="https://tamarack-prismic.imgix.net/plotly/eb464d43-4ab4-427e-b617-482b62ba6c69_plotly-logo-white.png?w=100&auto=format" /></a>
     <autocomplete @submit="navigate(this.value)" :min-len="0" :wait="10" @item-selected="navigate" @update-items="updateResults" :component-item='AutocompleteItem' :items="results" :input-attrs="{placeholder: 'search mocks'}"></autocomplete>
-    <span style="color:white; font-size:1.5em">plotly.js @ </span>
-    <select v-model="fromGithub">
-      <option v-for="version in versions" :key="version" :value="version">{{version}}</option>
-    </select>
+
     <a alt="Download JSON" target="_blank" :href="json_url">
       <font-awesome-layers class="fa-2x">
         <font-awesome-icon icon="circle" color="white" />
         <font-awesome-icon icon="download" transform="shrink-7" color="#118DFF" />
       </font-awesome-layers>
     </a>
-    <input alt="Render in browser" @click="plotlyRender" style="width:35px; height:35px;" type="image" src="logo.svg" />
-    <input alt="Render on Orca" @click="orcaRender" style="width:35px; height:35px;" type="image" src="https://raw.githubusercontent.com/plotly/orca/master/orca_logo.png" />
-    <font-awesome-layers :alt="errorMsg" class="fa-2x">
-      <font-awesome-icon icon="circle" :color="errorMsg ? 'red' : 'green'" />
-      <font-awesome-icon :icon="errorMsg ? 'exclamation': 'check'" transform="shrink-7" color="white" />
-    </font-awesome-layers>
 
     <a alt="Configuration" href="#config">
       <font-awesome-layers class="fa-2x">
@@ -30,8 +21,29 @@
   </header>
 
   <div class="container">
-    <div class="preview">
+    <header style="color: white;">
+      <input alt="Render in browser" @click="plotlyRender" style="width:50px; height:50px;" type="image" src="logo.svg" />
+      <input alt="Render on Orca" @click="orcaRender" style="width:50px; height:50pxpx;" type="image" src="https://raw.githubusercontent.com/plotly/orca/master/orca_logo.png" />
       <div>
+        <span style="font-size:1.5em">plotly.js @ </span>
+        <select v-model="fromGithub">
+          <option v-for="version in versions" :key="version" :value="version">{{version}}</option>
+        </select>
+    </div>
+    </header>
+
+    <header v-if="errorMsg" v-bind:style="{backgroundColor: errorColor}">
+      <div style="color: white;">
+        <font-awesome-layers :alt="errorMsg" class="fa-1x">
+          <font-awesome-icon icon="circle" :color="errorColor" />
+          <font-awesome-icon :icon="errorMsg ? 'exclamation': 'check'" transform="shrink-7" color="white" />
+        </font-awesome-layers>
+        <span>{{errorMsg}}</span>
+      </div>
+    </header>
+
+    <div class="preview">
+      <div v-if="plotlyJSdisplay">
         <h3>Comparison slider</h3>
         <comparify value="50">
           <img ref="baseline" slot="first" :src="baseline" />
@@ -40,7 +52,7 @@
         </comparify>
       </div>
 
-      <div v-if="mock">
+      <div v-if="numDiffPixels > 0">
         <h3>Diff ({{numDiffPixels}} different pixels)</h3>
         <canvas ref="diff" />
       </div>
@@ -54,7 +66,7 @@
       </div>
 
       <div v-if="mockPayload">
-        <h3>Live</h3>
+        <h3>plotly.js vs image</h3>
         <comparify value="50">
           <img slot="first" :src="baseline" />
           <div slot="second" id="graph" ref="graph" />
@@ -99,9 +111,9 @@ export default {
     return {
       title: 'plotly.js image viewer',
       fromGithub: 'local', // Either false of the name of the branch/tag
-      versions: ['local', 'master', 'v1.41.2', 'v1.31.0', 'v1.2.0'],
+      versions: ['local', 'master', 'v1.47.2', 'v1.31.0', 'v1.2.0'],
       baseUrl: 'http://localhost:3000',
-      orcaUrl: 'http://localhost:9999',
+      orcaUrl: 'http://localhost:9091',
 
       mock: null,
       mockPayload: null,
@@ -119,7 +131,8 @@ export default {
 
       // App state
       errorMsg: false,
-      loading: false
+      loading: false,
+      plotlyJSdisplay: true
     }
   },
   beforeRouteUpdate(to, from, next) {
@@ -142,6 +155,9 @@ export default {
     },
     json_url: function() {
       if (this.mock) return `${this.fromGithub !== 'local' ? this.rawGithubBaseUrl : this.baseUrl}/test/image/mocks/${this.mock}.json`;
+    },
+    errorColor: function() {
+      return this.errorMsg ? 'red' : 'green';
     }
   },
   methods: {
@@ -169,20 +185,25 @@ export default {
         var imgLoad = imagesLoaded(obj.$refs.image);
         var baselineImgLoad = imagesLoaded(obj.$refs.baseline);
         imgLoad.on('fail', function() {
-          obj.errorMsg = `Cannot load image ${obj.$refs.image.src}`;
+          obj.errorMsg = `Cannot load build image ${obj.$refs.image.src}`;
           obj.$refs.image.src = 'favicon.ico';
+
         })
 
         baselineImgLoad.on('fail', function() {
-          obj.errorMsg = `Cannot load image ${obj.$refs.baseline.src}`;
+          obj.errorMsg = `Cannot load baseline image ${obj.$refs.baseline.src}`;
           obj.$refs.baseline.src = 'favicon.ico';
           obj.loading = false;
         })
 
-        baselineImgLoad.on('always', function() {
+        baselineImgLoad.on('done', function() {
           // successfully loaded baseline image
-          var width = obj.$refs.baseline.width,
-            height = obj.$refs.baseline.height;
+          var width = obj.$refs.baseline.width;
+          var height = obj.$refs.baseline.height;
+
+          if(width < 64) width = 700;
+          if(height < 64) height = 400;
+          console.log(width, height);
           // TODO: console.log(`Fetching ${obj.json_url}`)
           axios
             .get(obj.json_url)
@@ -198,8 +219,8 @@ export default {
             .finally(() => obj.loading = false)
         })
         obj.mock = item;
-      },
-      plotlyRender: function() {
+    },
+    plotlyRender: function() {
         if (!this.mockPayload) return;
         var payload = JSON.parse(JSON.stringify(this.mockPayload));
         if (!payload.layout) {
@@ -222,7 +243,7 @@ export default {
             setTimeout(() => obj.loading = false, 100);
           })
       },
-      orcaRender: function() {
+    orcaRender: function() {
         if (!this.mockPayload) return;
         var payload = JSON.parse(JSON.stringify(this.mockPayload));
         if (!payload.layout) {
@@ -233,6 +254,7 @@ export default {
 
         var obj = this;
         obj.loading = true;
+        obj.errorMsg = false;
         axios({
             method: 'post',
             url: obj.orcaUrl,
@@ -246,7 +268,7 @@ export default {
 
         // Test agasint other Orca instance
       },
-      imgDiff: function() {
+    imgDiff: function() {
         var width = this.$refs.baseline.width,
           height = this.$refs.baseline.height;
         var ctx1 = this.convertImageToCanvas(this.$refs.baseline).getContext('2d'),
@@ -266,15 +288,15 @@ export default {
 
         diffCtx.putImageData(diff, 0, 0);
       },
-      // Converts image to canvas; returns new canvas element
-      convertImageToCanvas: function(image) {
+    // Converts image to canvas; returns new canvas element
+    convertImageToCanvas: function(image) {
         var canvas = document.createElement("canvas");
         canvas.width = image.width;
         canvas.height = image.height;
         canvas.getContext("2d").drawImage(image, 0, 0);
         return canvas;
       },
-      fetAllMocksGithub() {
+    fetAllMocksGithub() {
         var url = 'https://api.github.com/repos/plotly/plotly.js/contents/test/image/mocks';
 
         var obj = this;
@@ -292,7 +314,7 @@ export default {
             obj.AllMocks = mocks;
           })
       },
-      async fetchAllMocks() {
+    async fetchAllMocks() {
         var url = `${this.baseUrl}/test/image/mocks/`;
 
         var obj = this;
@@ -354,7 +376,7 @@ body {
 
 .container {
   background-color: white;
-  padding-top: 100px;
+  padding-top: 50px;
   padding-bottom: 50px;
 }
 
@@ -364,16 +386,18 @@ body {
   width: 90%;
 }
 
+header.main {
+  position: fixed;
+}
 header {
-  padding: 10px;
   display: flex;
+  padding: 10px;
   flex-wrap: nowrap;
   justify-content: space-around;
   align-items: center;
   z-index: 1000;
   background-color: #118DFF;
   box-sizing: border-box;
-  position: fixed;
   width: 100%;
 }
 
