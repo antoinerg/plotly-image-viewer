@@ -2,52 +2,54 @@
 <div>
   <loading :show="loading" />
   <header class="main">
-    <a href="https://plot.ly"><img class="plotly-logo" src="https://tamarack-prismic.imgix.net/plotly/eb464d43-4ab4-427e-b617-482b62ba6c69_plotly-logo-white.png?w=100&auto=format" /></a>
-    <autocomplete @submit="navigate(this.value)" :min-len="0" :wait="10" @item-selected="navigate" @update-items="updateResults" :component-item='AutocompleteItem' :items="results" :input-attrs="{placeholder: 'search mocks'}"></autocomplete>
+    <div class="row">
+      <a href="https://plot.ly"><img class="plotly-logo" src="https://tamarack-prismic.imgix.net/plotly/eb464d43-4ab4-427e-b617-482b62ba6c69_plotly-logo-white.png?w=100&auto=format" /></a>
+      <autocomplete @submit="navigate(this.value)" :min-len="0" :wait="10" @item-selected="navigate" @update-items="updateResults" :component-item='AutocompleteItem' :items="results" :input-attrs="{placeholder: 'search mocks'}"></autocomplete>
 
-    <a alt="Download JSON" target="_blank" :href="json_url">
-      <font-awesome-layers class="fa-2x">
-        <font-awesome-icon icon="circle" color="white" />
-        <font-awesome-icon icon="download" transform="shrink-7" color="#118DFF" />
-      </font-awesome-layers>
-    </a>
+      <a alt="Download JSON" target="_blank" :href="json_url">
+        <font-awesome-layers class="fa-2x">
+          <font-awesome-icon icon="circle" color="white" />
+          <font-awesome-icon icon="download" transform="shrink-7" color="#118DFF" />
+        </font-awesome-layers>
+      </a>
 
-    <a alt="Configuration" href="#config">
-      <font-awesome-layers class="fa-2x">
-        <font-awesome-icon icon="circle" color="white" />
-        <font-awesome-icon icon="cog" transform="shrink-7" color="#118DFF" />
-      </font-awesome-layers>
-    </a>
-  </header>
+      <a alt="Configuration" href="#config">
+        <font-awesome-layers class="fa-2x">
+          <font-awesome-icon icon="circle" color="white" />
+          <font-awesome-icon icon="cog" transform="shrink-7" color="#118DFF" />
+        </font-awesome-layers>
+      </a>
+    </div>
 
-  <div class="container">
-    <header style="color: white;">
-      <a alt="Render in plotly.js" @click="plotlyRender" style="display:flex; align-items: center; height:50px">
+    <div class="row button">
+      <a alt="Render in plotly.js" @click="plotlyRender" style="flex-grow:1; display:flex; justify-content: center; align-items: center; height:50px">
         <img style="width:50px; height:50px;" src="logo.svg"/>
         <span style="font-size: 1.5em">plotly.js</span>
       </a>
-      <a alt="Render on Orca" @click="orcaRender" style="display:flex; align-items: center; height:50px">
+      <a alt="Render on Orca" @click="orcaRender" style="flex-grow:1; display:flex; justify-content: center; align-items: center; height:50px">
         <img style="width:50px; height:50px;" src="https://raw.githubusercontent.com/plotly/orca/master/orca_logo.png"/>
         <span style="font-size: 1.5em">Orca</span>
       </a>
-      <div>
+      <div style="display:flex; justify-content: flex-end; flex-grow:1">
         <span style="font-size:1.5em">plotly.js @ </span>
         <select v-model="fromGithub">
           <option v-for="version in versions" :key="version" :value="version">{{version}}</option>
         </select>
+      </div>
     </div>
-    </header>
 
-    <header v-if="errorMsg" v-bind:style="{backgroundColor: errorColor}">
-      <div style="color: white;">
+    <div class="row" v-if="errorMsg" v-bind:style="{backgroundColor: errorColor}">
+      <div>
         <font-awesome-layers :alt="errorMsg" class="fa-1x">
           <font-awesome-icon icon="circle" :color="errorColor" />
           <font-awesome-icon :icon="errorMsg ? 'exclamation': 'check'" transform="shrink-7" color="white" />
         </font-awesome-layers>
         <span>{{errorMsg}}</span>
       </div>
-    </header>
+    </div>
+  </header>
 
+  <div class="container">
     <div class="preview">
       <div>
         <h3>Comparing</h3>
@@ -394,12 +396,11 @@ body {
   background-color: #118DFF;
 }
 
-
-
 .container {
   background-color: white;
-  padding-top: 50px;
   padding-bottom: 50px;
+  padding-top:175px;
+  z-index:10;
 }
 
 .preview {
@@ -410,17 +411,28 @@ body {
 
 header.main {
   position: fixed;
+  z-index:9999;
 }
+
 header {
+  width: 100%;
+  color: white;
+}
+
+.row {
   display: flex;
-  padding: 10px;
+  padding: 5px;
   flex-wrap: nowrap;
   justify-content: space-around;
   align-items: center;
-  z-index: 1000;
+  z-index: 9999;
   background-color: #118DFF;
   box-sizing: border-box;
   width: 100%;
+}
+
+.button a:hover {
+
 }
 
 header * {
@@ -488,10 +500,9 @@ pre {
 .v-autocomplete-list {
   width: 100%;
   list-style-type: none;
-
-  z-index: 100;
+  z-index: 9999;
   background: rgba(255, 255, 255, 0.85);
-
+  color: black;
   overflow-y: scroll;
   max-height: 80vh;
   position: absolute;
