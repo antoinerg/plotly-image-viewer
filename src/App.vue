@@ -82,7 +82,7 @@
         </comparify>
       </div>
 
-      <div v-if="mockPayload">
+      <div v-if="false">
         <h3>mock data (<a :href="json_url">JSON</a>)</h3>
         <div>
           <json-tree :data="mockPayload" :level="2"></json-tree>
@@ -231,26 +231,30 @@ export default {
     },
     plotlyRender: function() {
         if (!this.mockPayload) return;
-        var payload = JSON.parse(JSON.stringify(this.mockPayload));
-        if (!payload.layout) {
-          payload.layout = {};
-        } else {
-          if (payload.layout.width) delete(payload.layout.width);
-          if (payload.layout.height) delete(payload.layout.height);
-        }
-        payload.layout.autosize = true;
 
-        payload.config = {
-          mapboxAccessToken: this.mapboxAccessToken
-        }
+        this.loading=true;
 
         var obj = this;
-        obj.loading = true;
-        return Plotly.newPlot('graph', payload)
-          .then(function() {
-            window.gd = obj.$refs.graph
-            setTimeout(() => obj.loading = false, 100);
-          })
+        setTimeout(function() {
+            var payload = JSON.parse(JSON.stringify(obj.mockPayload));
+            if (!payload.layout) {
+              payload.layout = {};
+            } else {
+              if (payload.layout.width) delete(payload.layout.width);
+              if (payload.layout.height) delete(payload.layout.height);
+            }
+            payload.layout.autosize = true;
+
+            payload.config = {
+              mapboxAccessToken: this.mapboxAccessToken
+            }
+
+            return Plotly.newPlot('graph', payload)
+              .then(function() {
+                window.gd = obj.$refs.graph
+                setTimeout(() => obj.loading = false, 100);
+              })
+        }, 5)
       },
     orcaRender: function() {
         if (!this.mockPayload) return;
@@ -398,8 +402,8 @@ body {
 .container {
   background-color: white;
   padding-bottom: 50px;
-  padding-top:175px;
   z-index:10;
+  padding-top:20px;
 }
 
 .preview {
@@ -409,7 +413,8 @@ body {
 }
 
 header.main {
-  position: fixed;
+  position: sticky;
+  top: 0;
   z-index:9999;
 }
 
@@ -430,8 +435,9 @@ header {
   width: 100%;
 }
 
-.button a:hover {
-
+.button a:visited, .button a:link {
+  color: white;
+  text-decoration: none;
 }
 
 header * {
