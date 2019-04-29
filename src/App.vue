@@ -43,16 +43,16 @@
     </header>
 
     <div class="preview">
-      <div v-if="plotlyJSdisplay">
-        <h3>Comparison slider</h3>
+      <div>
+        <h3>Comparing</h3>
+        <span>{{baseline}}></span> <-> <span>{{compareToOrca || image}}</span>
         <comparify value="50">
           <img ref="baseline" slot="first" :src="baseline" />
           <img ref="image" slot="second" :src="image" />
-
         </comparify>
       </div>
 
-      <div v-if="numDiffPixels > 0">
+      <div>
         <h3>Diff ({{numDiffPixels}} different pixels)</h3>
         <canvas ref="diff" />
       </div>
@@ -66,7 +66,8 @@
       </div>
 
       <div v-if="mockPayload">
-        <h3>plotly.js vs image</h3>
+        <h3>Comparing</h3>
+        <span>{{baseline}}></span> <-> <span>plotly.js</span>
         <comparify value="50">
           <img slot="first" :src="baseline" />
           <div slot="second" id="graph" ref="graph" />
@@ -132,7 +133,8 @@ export default {
       // App state
       errorMsg: false,
       loading: false,
-      plotlyJSdisplay: true
+      plotlyJSdisplay: true,
+      compareToOrca: false
     }
   },
   beforeRouteUpdate(to, from, next) {
@@ -184,10 +186,10 @@ export default {
 
         var imgLoad = imagesLoaded(obj.$refs.image);
         var baselineImgLoad = imagesLoaded(obj.$refs.baseline);
+
         imgLoad.on('fail', function() {
           obj.errorMsg = `Cannot load build image ${obj.$refs.image.src}`;
           obj.$refs.image.src = 'favicon.ico';
-
         })
 
         baselineImgLoad.on('fail', function() {
@@ -261,14 +263,23 @@ export default {
             data: payload,
             responseType: 'arraybuffer'
           })
+          .catch(error => {
+              obj.loading = false;
+              obj.errorMsg = `HTTP call to Orca failed with ${error}`
+          })
           .then(response => new Buffer(response.data, 'binary').toString('base64'))
           .then(image => this.$refs.image.src = 'data:image/png;base64,' + image)
+          .then(function() {
+            obj.compareToOrca = `output from Orca at ${obj.orcaUrl}/`
+            return true;
+          })
           .then(obj.imgDiff)
           .finally(() => obj.loading = false)
 
         // Test agasint other Orca instance
       },
     imgDiff: function() {
+      try {
         var width = this.$refs.baseline.width,
           height = this.$refs.baseline.height;
         var ctx1 = this.convertImageToCanvas(this.$refs.baseline).getContext('2d'),
@@ -283,10 +294,15 @@ export default {
         this.$refs.diff.height = height;
 
         this.numDiffPixels = pixelmatch(img1.data, img2.data, diff.data, width, height, {
-          threshold: 0.01
+          threshold: 0
         });
 
         diffCtx.putImageData(diff, 0, 0);
+      } catch (error) {
+        this.errorMsg = `image comparison failed with ${error}`
+        throw(error)
+      }
+
       },
     // Converts image to canvas; returns new canvas element
     convertImageToCanvas: function(image) {
