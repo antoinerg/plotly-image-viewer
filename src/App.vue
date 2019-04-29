@@ -53,7 +53,7 @@
     <div class="preview">
       <div>
         <h3>Comparing</h3>
-        <span>{{baseline}}></span> <-> <span>{{compareToOrca || image}}</span>
+        <span>{{baseline}}></span> with <span>{{compareToOrca || image}}</span>
         <comparify value="50">
           <img ref="baseline" slot="first" :src="baseline" />
           <img ref="image" slot="second" :src="image" />
@@ -75,7 +75,7 @@
 
       <div v-if="mockPayload">
         <h3>Comparing</h3>
-        <span>{{baseline}}></span> <-> <span>plotly.js</span>
+        <span>{{baseline}}></span> with <span>plotly.js</span>
         <comparify value="50">
           <img slot="first" :src="baseline" />
           <div slot="second" id="graph" ref="graph" />
@@ -213,7 +213,6 @@ export default {
 
           if(width < 64) width = 700;
           if(height < 64) height = 400;
-          console.log(width, height);
           // TODO: console.log(`Fetching ${obj.json_url}`)
           axios
             .get(obj.json_url)
