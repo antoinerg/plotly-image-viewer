@@ -1,46 +1,66 @@
 <template>
 <div>
   <loading :show="loading" />
-  <header>
-    <a href="https://plot.ly"><img class="plotly-logo" src="https://tamarack-prismic.imgix.net/plotly/eb464d43-4ab4-427e-b617-482b62ba6c69_plotly-logo-white.png?w=100&auto=format" /></a>
-    <autocomplete @submit="navigate(this.value)" :min-len="0" :wait="10" @item-selected="navigate" @update-items="updateResults" :component-item='AutocompleteItem' :items="results" :input-attrs="{placeholder: 'search mocks'}"></autocomplete>
-    <span style="color:white; font-size:1.5em">plotly.js @ </span>
-    <select v-model="fromGithub">
-      <option v-for="version in versions" :key="version" :value="version">{{version}}</option>
-    </select>
-    <a alt="Download JSON" target="_blank" :href="json_url">
-      <font-awesome-layers class="fa-2x">
-        <font-awesome-icon icon="circle" color="white" />
-        <font-awesome-icon icon="download" transform="shrink-7" color="#118DFF" />
-      </font-awesome-layers>
-    </a>
-    <input alt="Render in browser" @click="plotlyRender" style="width:35px; height:35px;" type="image" src="logo.svg" />
-    <input alt="Render on Orca" @click="orcaRender" style="width:35px; height:35px;" type="image" src="https://raw.githubusercontent.com/plotly/orca/master/orca_logo.png" />
-    <font-awesome-layers :alt="errorMsg" class="fa-2x">
-      <font-awesome-icon icon="circle" :color="errorMsg ? 'red' : 'green'" />
-      <font-awesome-icon :icon="errorMsg ? 'exclamation': 'check'" transform="shrink-7" color="white" />
-    </font-awesome-layers>
+  <header class="main">
+    <div class="row">
+      <a href="https://plot.ly"><img class="plotly-logo" src="https://tamarack-prismic.imgix.net/plotly/eb464d43-4ab4-427e-b617-482b62ba6c69_plotly-logo-white.png?w=100&auto=format" /></a>
+      <autocomplete @submit="navigate(this.value)" :min-len="0" :wait="10" @item-selected="navigate" @update-items="updateResults" :component-item='AutocompleteItem' :items="results" :input-attrs="{placeholder: 'search mocks'}"></autocomplete>
 
-    <a alt="Configuration" href="#config">
-      <font-awesome-layers class="fa-2x">
-        <font-awesome-icon icon="circle" color="white" />
-        <font-awesome-icon icon="cog" transform="shrink-7" color="#118DFF" />
-      </font-awesome-layers>
-    </a>
+      <a alt="Download JSON" target="_blank" :href="json_url">
+        <font-awesome-layers class="fa-2x">
+          <font-awesome-icon icon="circle" color="white" />
+          <font-awesome-icon icon="download" transform="shrink-7" color="#118DFF" />
+        </font-awesome-layers>
+      </a>
+
+      <a alt="Configuration" href="#config">
+        <font-awesome-layers class="fa-2x">
+          <font-awesome-icon icon="circle" color="white" />
+          <font-awesome-icon icon="cog" transform="shrink-7" color="#118DFF" />
+        </font-awesome-layers>
+      </a>
+    </div>
+
+    <div class="row button">
+      <a alt="Render in plotly.js" @click="plotlyRender" style="flex-grow:1; display:flex; justify-content: center; align-items: center; height:50px">
+        <img style="width:50px; height:50px;" src="logo.svg"/>
+        <span style="font-size: 1.5em">plotly.js</span>
+      </a>
+      <a alt="Render on Orca" @click="orcaRender" style="flex-grow:1; display:flex; justify-content: center; align-items: center; height:50px">
+        <img style="width:50px; height:50px;" src="https://raw.githubusercontent.com/plotly/orca/master/orca_logo.png"/>
+        <span style="font-size: 1.5em">Orca</span>
+      </a>
+      <div style="display:flex; justify-content: flex-end; flex-grow:1">
+        <span style="font-size:1.5em">plotly.js @ </span>
+        <select v-model="fromGithub">
+          <option v-for="version in versions" :key="version" :value="version">{{version}}</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="row" v-if="errorMsg" v-bind:style="{backgroundColor: errorColor}">
+      <div>
+        <font-awesome-layers :alt="errorMsg" class="fa-1x">
+          <font-awesome-icon icon="circle" :color="errorColor" />
+          <font-awesome-icon :icon="errorMsg ? 'exclamation': 'check'" transform="shrink-7" color="white" />
+        </font-awesome-layers>
+        <span>{{errorMsg}}</span>
+      </div>
+    </div>
   </header>
 
   <div class="container">
     <div class="preview">
       <div>
-        <h3>Comparison slider</h3>
+        <h3>Comparing</h3>
+        <span>{{baseline}}></span> with <span>{{compareToOrca || image}}</span>
         <comparify value="50">
           <img ref="baseline" slot="first" :src="baseline" />
           <img ref="image" slot="second" :src="image" />
-
         </comparify>
       </div>
 
-      <div v-if="mock">
+      <div>
         <h3>Diff ({{numDiffPixels}} different pixels)</h3>
         <canvas ref="diff" />
       </div>
@@ -54,14 +74,15 @@
       </div>
 
       <div v-if="mockPayload">
-        <h3>Live</h3>
+        <h3>Comparing</h3>
+        <span>{{baseline}}></span> with <span>plotly.js</span>
         <comparify value="50">
           <img slot="first" :src="baseline" />
           <div slot="second" id="graph" ref="graph" />
         </comparify>
       </div>
 
-      <div v-if="mockPayload">
+      <div v-if="false">
         <h3>mock data (<a :href="json_url">JSON</a>)</h3>
         <div>
           <json-tree :data="mockPayload" :level="2"></json-tree>
@@ -99,9 +120,9 @@ export default {
     return {
       title: 'plotly.js image viewer',
       fromGithub: 'local', // Either false of the name of the branch/tag
-      versions: ['local', 'master', 'v1.41.2', 'v1.31.0', 'v1.2.0'],
+      versions: ['local', 'master', 'v1.47.2', 'v1.31.0', 'v1.2.0'],
       baseUrl: 'http://localhost:3000',
-      orcaUrl: 'http://localhost:9999',
+      orcaUrl: 'http://localhost:9091',
 
       mock: null,
       mockPayload: null,
@@ -119,7 +140,9 @@ export default {
 
       // App state
       errorMsg: false,
-      loading: false
+      loading: false,
+      plotlyJSdisplay: true,
+      compareToOrca: false
     }
   },
   beforeRouteUpdate(to, from, next) {
@@ -142,6 +165,9 @@ export default {
     },
     json_url: function() {
       if (this.mock) return `${this.fromGithub !== 'local' ? this.rawGithubBaseUrl : this.baseUrl}/test/image/mocks/${this.mock}.json`;
+    },
+    errorColor: function() {
+      return this.errorMsg ? 'red' : 'green';
     }
   },
   methods: {
@@ -168,21 +194,25 @@ export default {
 
         var imgLoad = imagesLoaded(obj.$refs.image);
         var baselineImgLoad = imagesLoaded(obj.$refs.baseline);
+
         imgLoad.on('fail', function() {
-          obj.errorMsg = `Cannot load image ${obj.$refs.image.src}`;
+          obj.errorMsg = `Cannot load build image ${obj.$refs.image.src}`;
           obj.$refs.image.src = 'favicon.ico';
         })
 
         baselineImgLoad.on('fail', function() {
-          obj.errorMsg = `Cannot load image ${obj.$refs.baseline.src}`;
+          obj.errorMsg = `Cannot load baseline image ${obj.$refs.baseline.src}`;
           obj.$refs.baseline.src = 'favicon.ico';
           obj.loading = false;
         })
 
-        baselineImgLoad.on('always', function() {
+        baselineImgLoad.on('done', function() {
           // successfully loaded baseline image
-          var width = obj.$refs.baseline.width,
-            height = obj.$refs.baseline.height;
+          var width = obj.$refs.baseline.width;
+          var height = obj.$refs.baseline.height;
+
+          if(width < 64) width = 700;
+          if(height < 64) height = 400;
           // TODO: console.log(`Fetching ${obj.json_url}`)
           axios
             .get(obj.json_url)
@@ -198,31 +228,35 @@ export default {
             .finally(() => obj.loading = false)
         })
         obj.mock = item;
-      },
-      plotlyRender: function() {
+    },
+    plotlyRender: function() {
         if (!this.mockPayload) return;
-        var payload = JSON.parse(JSON.stringify(this.mockPayload));
-        if (!payload.layout) {
-          payload.layout = {};
-        } else {
-          if (payload.layout.width) delete(payload.layout.width);
-          if (payload.layout.height) delete(payload.layout.height);
-        }
-        payload.layout.autosize = true;
 
-        payload.config = {
-          mapboxAccessToken: this.mapboxAccessToken
-        }
+        this.loading=true;
 
         var obj = this;
-        obj.loading = true;
-        return Plotly.newPlot('graph', payload)
-          .then(function() {
-            window.gd = obj.$refs.graph
-            setTimeout(() => obj.loading = false, 100);
-          })
+        setTimeout(function() {
+            var payload = JSON.parse(JSON.stringify(obj.mockPayload));
+            if (!payload.layout) {
+              payload.layout = {};
+            } else {
+              if (payload.layout.width) delete(payload.layout.width);
+              if (payload.layout.height) delete(payload.layout.height);
+            }
+            payload.layout.autosize = true;
+
+            payload.config = {
+              mapboxAccessToken: this.mapboxAccessToken
+            }
+
+            return Plotly.newPlot('graph', payload)
+              .then(function() {
+                window.gd = obj.$refs.graph
+                setTimeout(() => obj.loading = false, 100);
+              })
+        }, 5)
       },
-      orcaRender: function() {
+    orcaRender: function() {
         if (!this.mockPayload) return;
         var payload = JSON.parse(JSON.stringify(this.mockPayload));
         if (!payload.layout) {
@@ -233,20 +267,30 @@ export default {
 
         var obj = this;
         obj.loading = true;
+        obj.errorMsg = false;
         axios({
             method: 'post',
             url: obj.orcaUrl,
             data: payload,
             responseType: 'arraybuffer'
           })
+          .catch(error => {
+              obj.loading = false;
+              obj.errorMsg = `HTTP call to Orca failed with ${error}`
+          })
           .then(response => new Buffer(response.data, 'binary').toString('base64'))
           .then(image => this.$refs.image.src = 'data:image/png;base64,' + image)
+          .then(function() {
+            obj.compareToOrca = `output from Orca at ${obj.orcaUrl}/`
+            return true;
+          })
           .then(obj.imgDiff)
           .finally(() => obj.loading = false)
 
         // Test agasint other Orca instance
       },
-      imgDiff: function() {
+    imgDiff: function() {
+      try {
         var width = this.$refs.baseline.width,
           height = this.$refs.baseline.height;
         var ctx1 = this.convertImageToCanvas(this.$refs.baseline).getContext('2d'),
@@ -261,20 +305,25 @@ export default {
         this.$refs.diff.height = height;
 
         this.numDiffPixels = pixelmatch(img1.data, img2.data, diff.data, width, height, {
-          threshold: 0.01
+          threshold: 0
         });
 
         diffCtx.putImageData(diff, 0, 0);
+      } catch (error) {
+        this.errorMsg = `image comparison failed with ${error}`
+        throw(error)
+      }
+
       },
-      // Converts image to canvas; returns new canvas element
-      convertImageToCanvas: function(image) {
+    // Converts image to canvas; returns new canvas element
+    convertImageToCanvas: function(image) {
         var canvas = document.createElement("canvas");
         canvas.width = image.width;
         canvas.height = image.height;
         canvas.getContext("2d").drawImage(image, 0, 0);
         return canvas;
       },
-      fetAllMocksGithub() {
+    fetAllMocksGithub() {
         var url = 'https://api.github.com/repos/plotly/plotly.js/contents/test/image/mocks';
 
         var obj = this;
@@ -292,7 +341,7 @@ export default {
             obj.AllMocks = mocks;
           })
       },
-      async fetchAllMocks() {
+    async fetchAllMocks() {
         var url = `${this.baseUrl}/test/image/mocks/`;
 
         var obj = this;
@@ -350,12 +399,11 @@ body {
   background-color: #118DFF;
 }
 
-
-
 .container {
   background-color: white;
-  padding-top: 100px;
   padding-bottom: 50px;
+  z-index:10;
+  padding-top:20px;
 }
 
 .preview {
@@ -364,17 +412,32 @@ body {
   width: 90%;
 }
 
+header.main {
+  position: sticky;
+  top: 0;
+  z-index:9999;
+}
+
 header {
-  padding: 10px;
+  width: 100%;
+  color: white;
+}
+
+.row {
   display: flex;
+  padding: 5px;
   flex-wrap: nowrap;
   justify-content: space-around;
   align-items: center;
-  z-index: 1000;
+  z-index: 9999;
   background-color: #118DFF;
   box-sizing: border-box;
-  position: fixed;
   width: 100%;
+}
+
+.button a:visited, .button a:link {
+  color: white;
+  text-decoration: none;
 }
 
 header * {
@@ -442,10 +505,9 @@ pre {
 .v-autocomplete-list {
   width: 100%;
   list-style-type: none;
-
-  z-index: 100;
+  z-index: 9999;
   background: rgba(255, 255, 255, 0.85);
-
+  color: black;
   overflow-y: scroll;
   max-height: 80vh;
   position: absolute;
